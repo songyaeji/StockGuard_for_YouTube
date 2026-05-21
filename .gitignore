@@ -1,0 +1,25 @@
+# Environment & secrets
+.env
+
+# Claude Code internal files
+.claude/
+
+# Data files (too large for git)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
