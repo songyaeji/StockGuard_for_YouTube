@@ -11,6 +11,17 @@ from pathlib import Path
 import googleapiclient.discovery
 from googleapiclient.errors import HttpError
 
+
+class QuotaExceeded(Exception):
+    """YouTube API 일일 쿼터 초과 시 발생."""
+    pass
+
+
+def _check_quota(e: HttpError):
+    """HttpError가 쿼터 초과인 경우 QuotaExceeded로 변환."""
+    if e.status_code == 403 and "quotaExceeded" in str(e):
+        raise QuotaExceeded("YouTube API 일일 쿼터 초과") from e
+
 from config.settings import (
     YOUTUBE_API_KEY,
     RAW_DIR,
@@ -91,9 +102,7 @@ def search_channels(youtube, query: str) -> list[str]:
         try:
             response = youtube.search().list(**params).execute()
         except HttpError as e:
-            if e.status_code == 403:
-                # 쿼터 초과 - 더 이상 search 요청 불가, 호출자에게 알림
-                raise
+            _check_quota(e)
             print(f"  [검색 오류] '{query}' page{page+1}: {e.reason}")
             break
 
@@ -190,6 +199,7 @@ def fetch_videos_for_channel(youtube, channel_id: str, uploads_playlist_id: str)
                 pageToken=page_token,
             ).execute()
         except HttpError as e:
+            _check_quota(e)
             # 채널 삭제/비공개 등으로 재생목록을 찾을 수 없는 경우 스킵
             print(f"    [영상 스킵] playlist={uploads_playlist_id} : {e.reason}")
             return []
@@ -298,9 +308,7 @@ def fetch_comments_for_video(youtube, video_id: str, channel_id: str) -> list[di
             })
 
     except HttpError as e:
-        if e.status_code == 403 and "quotaExceeded" in str(e):
-            # 쿼터 초과 - 호출자에게 전파해서 파이프라인 중단
-            raise
+        _check_quota(e)
         # 댓글 비활성화(commentsDisabled) 등 일반 오류는 스킵
         print(f"    [댓글 스킵] video_id={video_id} : {e.reason}")
     except Exception as e:
