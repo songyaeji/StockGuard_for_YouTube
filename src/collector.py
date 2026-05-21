@@ -297,8 +297,13 @@ def fetch_comments_for_video(youtube, video_id: str, channel_id: str) -> list[di
                 "collected_at": _now(),
             })
 
+    except HttpError as e:
+        if e.status_code == 403 and "quotaExceeded" in str(e):
+            # 쿼터 초과 - 호출자에게 전파해서 파이프라인 중단
+            raise
+        # 댓글 비활성화(commentsDisabled) 등 일반 오류는 스킵
+        print(f"    [댓글 스킵] video_id={video_id} : {e.reason}")
     except Exception as e:
-        # 댓글 비활성화 또는 오류 → 로그만 남기고 계속 진행
         print(f"    [댓글 스킵] video_id={video_id} : {e}")
 
     return results

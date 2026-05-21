@@ -124,12 +124,20 @@ def run():
             continue
 
         print(f"  [{idx}/{len(comment_targets)}] {channel_id} → {len(video_ids)}개 영상")
+        quota_hit = False
         for video_id in video_ids:
-            comments = fetch_comments_for_video(youtube, video_id, channel_id)
+            try:
+                comments = fetch_comments_for_video(youtube, video_id, channel_id)
+            except Exception:
+                print("\n  [!] API 쿼터 초과 — 댓글 수집 중단 (내일 재실행 시 이어받기)")
+                quota_hit = True
+                break
             for c in comments:
                 insert_comment(c)
             print(f"    {video_id} → 댓글 {len(comments)}개")
             time.sleep(REQUEST_DELAY_SECONDS)
+        if quota_hit:
+            break
 
     print("\n" + "=" * 50)
     print("수집 완료!")
