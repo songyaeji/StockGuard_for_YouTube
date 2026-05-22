@@ -34,7 +34,8 @@ def init_db():
                 published_at     TEXT,          -- 채널 개설일 (ISO 8601)
                 thumbnail_url    TEXT,
                 search_query     TEXT,          -- 어떤 검색어로 수집되었는지 추적용
-                collected_at     TEXT NOT NULL  -- 수집 시각 (반복 수집 시 변화 추적)
+                collected_at     TEXT NOT NULL, -- 수집 시각 (반복 수집 시 변화 추적)
+                videos_fetched   INTEGER NOT NULL DEFAULT 0  -- 영상 수집 시도 여부 (결과 무관)
             );
 
             -- ② 채널 태그 (1채널 : N태그 분리)
@@ -171,13 +172,21 @@ def insert_comment(data: dict):
         """, data)
 
 
-def has_videos(channel_id: str) -> bool:
-    """이미 영상이 수집된 채널인지 확인 (재실행 시 중복 수집 방지)."""
+def is_videos_fetched(channel_id: str) -> bool:
+    """영상 수집을 시도한 채널인지 확인 (결과 무관 — 재실행 시 중복 시도 방지)."""
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT 1 FROM videos WHERE channel_id = ? LIMIT 1", (channel_id,)
+            "SELECT videos_fetched FROM channels WHERE channel_id = ?", (channel_id,)
         ).fetchone()
-    return row is not None
+    return bool(row and row["videos_fetched"])
+
+
+def mark_videos_fetched(channel_id: str):
+    """영상 수집 시도 완료 표시 (영상이 0개여도 호출)."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE channels SET videos_fetched = 1 WHERE channel_id = ?", (channel_id,)
+        )
 
 
 def get_channel_ids() -> list[str]:

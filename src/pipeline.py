@@ -15,7 +15,8 @@ from config.settings import (
 from src.db import (
     init_db,
     channel_exists,
-    has_videos,
+    is_videos_fetched,
+    mark_videos_fetched,
     get_searched_queries,
     insert_channel,
     insert_video,
@@ -103,7 +104,7 @@ def run():
     # ── STEP 3: 저장된 채널 → 영상 수집 ────────────────────
     print("\n[2단계] 채널별 영상 수집")
     channel_ids = get_channel_ids()
-    pending = [cid for cid in channel_ids if not has_videos(cid)]
+    pending = [cid for cid in channel_ids if not is_videos_fetched(cid)]
     print(f"총 {len(channel_ids)}개 채널 중 {len(pending)}개 미수집")
 
     for idx, channel_id in enumerate(pending, 1):
@@ -112,10 +113,12 @@ def run():
             uploads_id = get_uploads_playlist_id(youtube, channel_id)
             if not uploads_id:
                 print("→ 재생목록 없음, 스킵")
+                mark_videos_fetched(channel_id)
                 continue
             videos = fetch_videos_for_channel(youtube, channel_id, uploads_id)
             for v in videos:
                 insert_video(v)
+            mark_videos_fetched(channel_id)
             print(f"→ 영상 {len(videos)}개 저장")
 
         except QuotaExceeded:
