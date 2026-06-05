@@ -11,6 +11,18 @@ RAW_DIR = BASE_DIR / "data" / "raw_responses"
 
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
 
+# 쿼터 초과 시 순서대로 교체할 API 키 목록 (빈 값 제외, 키 번호 순서대로)
+# YOUTUBE_API_KEY(1번) → YOUTUBE_API_KEY_2 → _3 → ... 환경변수 동적 수집
+_keys = [os.environ.get("YOUTUBE_API_KEY", "")]
+_i = 2
+while True:
+    k = os.environ.get(f"YOUTUBE_API_KEY_{_i}", "")
+    if not k:
+        break
+    _keys.append(k)
+    _i += 1
+YOUTUBE_API_KEYS = [k for k in _keys if k]
+
 SEARCH_QUERIES = [
     # A. 불법 리딩방 채널 타겟
     "주식리딩방", "주식종목추천", "급등주", "수익률보장",

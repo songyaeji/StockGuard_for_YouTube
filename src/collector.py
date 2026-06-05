@@ -62,10 +62,10 @@ def _parse_duration(iso_duration: str) -> int:
     return hours * 3600 + minutes * 60 + seconds
 
 
-def build_youtube_client():
-    """YouTube API 클라이언트 객체 생성."""
+def build_youtube_client(api_key: str = None):
+    """YouTube API 클라이언트 객체 생성. api_key 미지정 시 기본 키 사용."""
     return googleapiclient.discovery.build(
-        "youtube", "v3", developerKey=YOUTUBE_API_KEY
+        "youtube", "v3", developerKey=api_key or YOUTUBE_API_KEY
     )
 
 
@@ -248,6 +248,7 @@ def fetch_videos_for_channel(youtube, channel_id: str, uploads_playlist_id: str)
                 "thumbnail_url": snippet.get("thumbnails", {}).get("default", {}).get("url", ""),
                 "collected_at": _now(),
                 "tags": snippet.get("tags", []),
+                "comments_disabled": 0,
             })
 
         time.sleep(REQUEST_DELAY_SECONDS)
@@ -275,43 +276,104 @@ def get_uploads_playlist_id(youtube, channel_id: str) -> str | None:
 # STEP 4: 영상 → 댓글 수집
 # ─────────────────────────────────────────────
 
-def fetch_comments_for_video(youtube, video_id: str, channel_id: str) -> list[dict]:
+def _comment_row(comment: dict, video_id: str, channel_id: str, parent_id: str | None) -> dict:
+    """commentThreads/comments API의 댓글 객체를 DB 저장용 dict로 변환."""
+    snip = comment["snippet"]
+    return {
+        "comment_id": comment["id"],
+        "video_id": video_id,
+        "channel_id": channel_id,
+        "parent_id": parent_id,
+        "author": snip.get("authorDisplayName", ""),
+        "text": snip.get("textDisplay", ""),
+        "like_count": int(snip.get("likeCount", 0)),
+        "published_at": snip.get("publishedAt", ""),
+        "collected_at": _now(),
+    }
+
+
+def _fetch_all_replies(youtube, parent_comment_id: str, video_id: str, channel_id: str) -> list[dict]:
     """
-    영상의 최상위 댓글(top-level comments)을 수집.
-    - order=relevance : 좋아요 많은 댓글 우선 (불법 광고성 댓글 포착에 유리)
-    - maxResults=COMMENTS_PER_VIDEO : 영상당 수집할 댓글 수
-    댓글이 비활성화된 영상은 예외 처리 후 건너뜀.
+    최상위 댓글 하나의 모든 대댓글(답글)을 comments.list로 페이지네이션 수집.
+    답글이 6개 이상이라 commentThreads inline(최대 5개)으로 부족할 때만 호출.
+    """
+    replies = []
+    page_token = None
+    while True:
+        response = youtube.comments().list(
+            part="snippet",
+            parentId=parent_comment_id,
+            maxResults=100,
+            textFormat="plainText",
+            pageToken=page_token,
+        ).execute()
+        for item in response.get("items", []):
+            replies.append(_comment_row(item, video_id, channel_id, parent_comment_id))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+        time.sleep(REQUEST_DELAY_SECONDS)
+    return replies
+
+
+def fetch_comments_for_video(youtube, video_id: str, channel_id: str) -> tuple[list[dict], bool]:
+    """
+    영상의 전체 댓글(최상위 + 대댓글)을 수집.
+    - commentThreads.list를 nextPageToken으로 끝까지 페이지네이션 (상한 없음)
+    - order=relevance : 좋아요/참여도 높은 댓글 우선
+    - 각 thread의 totalReplyCount > inline 답글 수일 때만 comments.list로 나머지 답글 조회
+    댓글 비활성화 영상은 예외 처리 후 건너뜀.
+    반환값: (댓글 목록[최상위+답글], 댓글_비활성화_여부)
     """
     results = []
+    disabled = False
+    page_token = None
+    page_idx = 0
     try:
-        response = youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=COMMENTS_PER_VIDEO,
-            order="relevance",      # 관련성 높은(좋아요 많은) 댓글 우선
-            textFormat="plainText", # HTML 태그 없이 순수 텍스트로 수집
-        ).execute()
+        while True:
+            response = youtube.commentThreads().list(
+                part="snippet,replies",
+                videoId=video_id,
+                maxResults=100,         # 페이지당 최대 (API max)
+                order="relevance",      # 관련성 높은(좋아요 많은) 댓글 우선
+                textFormat="plainText", # HTML 태그 없이 순수 텍스트로 수집
+                pageToken=page_token,
+            ).execute()
 
-        _save_raw("comments", f"{video_id}.json", response)
+            page_idx += 1
+            _save_raw("comments", f"{video_id}_page{page_idx:03d}.json", response)
 
-        for item in response.get("items", []):
-            top = item["snippet"]["topLevelComment"]["snippet"]
-            results.append({
-                "comment_id": item["id"],
-                "video_id": video_id,
-                "channel_id": channel_id,
-                "author": top.get("authorDisplayName", ""),
-                "text": top.get("textDisplay", ""),
-                "like_count": int(top.get("likeCount", 0)),
-                "published_at": top.get("publishedAt", ""),
-                "collected_at": _now(),
-            })
+            for item in response.get("items", []):
+                top = item["snippet"]["topLevelComment"]
+                top_id = top["id"]
+                results.append(_comment_row(top, video_id, channel_id, None))
+
+                reply_count = int(item["snippet"].get("totalReplyCount", 0))
+                if reply_count == 0:
+                    continue
+
+                inline = item.get("replies", {}).get("comments", [])
+                if reply_count <= len(inline):
+                    # inline(최대 5개)로 답글 전부 포함됨 → 추가 호출 불필요
+                    for r in inline:
+                        results.append(_comment_row(r, video_id, channel_id, top_id))
+                else:
+                    # 답글 6개 이상 → 전체 답글 별도 조회
+                    results.extend(
+                        _fetch_all_replies(youtube, top_id, video_id, channel_id)
+                    )
+
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+            time.sleep(REQUEST_DELAY_SECONDS)
 
     except HttpError as e:
         _check_quota(e)
-        # 댓글 비활성화(commentsDisabled) 등 일반 오류는 스킵
+        if "disabled" in str(e).lower() or "commentsDisabled" in str(e):
+            disabled = True
         print(f"    [댓글 스킵] video_id={video_id} : {e.reason}")
     except Exception as e:
         print(f"    [댓글 스킵] video_id={video_id} : {e}")
 
-    return results
+    return results, disabled

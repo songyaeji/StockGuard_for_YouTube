@@ -50,17 +50,19 @@ def init_db():
 
             -- ③ 영상 기본 정보
             CREATE TABLE IF NOT EXISTS videos (
-                video_id         TEXT PRIMARY KEY,
-                channel_id       TEXT NOT NULL REFERENCES channels(channel_id),
-                title            TEXT NOT NULL,
-                description      TEXT,
-                published_at     TEXT,
-                view_count       INTEGER,
-                like_count       INTEGER,
-                comment_count    INTEGER,
-                duration_seconds INTEGER,  -- API 원본(PT15M33S)을 초 단위로 변환해 저장
-                thumbnail_url    TEXT,
-                collected_at     TEXT NOT NULL
+                video_id           TEXT PRIMARY KEY,
+                channel_id         TEXT NOT NULL REFERENCES channels(channel_id),
+                title              TEXT NOT NULL,
+                description        TEXT,
+                published_at       TEXT,
+                view_count         INTEGER,
+                like_count         INTEGER,
+                comment_count      INTEGER,
+                duration_seconds   INTEGER,  -- API 원본(PT15M33S)을 초 단위로 변환해 저장
+                thumbnail_url      TEXT,
+                collected_at       TEXT NOT NULL,
+                comments_disabled  INTEGER NOT NULL DEFAULT 0,  -- 댓글 비활성화 여부 (1=disabled)
+                comments_fetched   INTEGER NOT NULL DEFAULT 0   -- 댓글 수집 시도 완료 여부 (재실행 skip용)
             );
             CREATE INDEX IF NOT EXISTS idx_videos_channel
                 ON videos(channel_id);
@@ -74,11 +76,12 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_video_tags_tag
                 ON video_tags(tag);
 
-            -- ⑤ 댓글 (채널당 상위 3개 영상 × 20개)
+            -- ⑤ 댓글 (영상별 전체 댓글 + 대댓글)
             CREATE TABLE IF NOT EXISTS comments (
                 comment_id   TEXT PRIMARY KEY,
                 video_id     TEXT NOT NULL REFERENCES videos(video_id),
                 channel_id   TEXT NOT NULL REFERENCES channels(channel_id),
+                parent_id    TEXT,          -- 대댓글이면 부모(최상위) 댓글 ID, 최상위면 NULL
                 author       TEXT,
                 text         TEXT,
                 like_count   INTEGER,
@@ -90,6 +93,23 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_comments_channel
                 ON comments(channel_id);
         """)
+        # 기존 DB에 컬럼이 없으면 추가 (IF NOT EXISTS로 테이블 생성을 건너뛴 경우 대비)
+        try:
+            conn.execute(
+                "ALTER TABLE videos ADD COLUMN comments_disabled INTEGER NOT NULL DEFAULT 0"
+            )
+        except Exception:
+            pass  # 이미 존재하면 무시
+        try:
+            conn.execute("ALTER TABLE comments ADD COLUMN parent_id TEXT")
+        except Exception:
+            pass  # 이미 존재하면 무시
+        try:
+            conn.execute(
+                "ALTER TABLE videos ADD COLUMN comments_fetched INTEGER NOT NULL DEFAULT 0"
+            )
+        except Exception:
+            pass  # 이미 존재하면 무시
     conn.close()
     print(f"[DB] 초기화 완료: {DB_PATH}")
 
@@ -143,11 +163,11 @@ def insert_video(data: dict):
             INSERT OR REPLACE INTO videos
                 (video_id, channel_id, title, description, published_at,
                  view_count, like_count, comment_count, duration_seconds,
-                 thumbnail_url, collected_at)
+                 thumbnail_url, collected_at, comments_disabled)
             VALUES
                 (:video_id, :channel_id, :title, :description, :published_at,
                  :view_count, :like_count, :comment_count, :duration_seconds,
-                 :thumbnail_url, :collected_at)
+                 :thumbnail_url, :collected_at, :comments_disabled)
         """, data)
         if data.get("tags"):
             conn.execute(
@@ -164,10 +184,10 @@ def insert_comment(data: dict):
     with get_conn() as conn:
         conn.execute("""
             INSERT OR IGNORE INTO comments
-                (comment_id, video_id, channel_id, author, text,
+                (comment_id, video_id, channel_id, parent_id, author, text,
                  like_count, published_at, collected_at)
             VALUES
-                (:comment_id, :video_id, :channel_id, :author, :text,
+                (:comment_id, :video_id, :channel_id, :parent_id, :author, :text,
                  :like_count, :published_at, :collected_at)
         """, data)
 
@@ -194,6 +214,22 @@ def get_channel_ids() -> list[str]:
     with get_conn() as conn:
         rows = conn.execute("SELECT channel_id FROM channels").fetchall()
     return [r["channel_id"] for r in rows]
+
+
+def mark_comments_disabled(video_id: str):
+    """댓글 비활성화 영상 표시."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE videos SET comments_disabled = 1 WHERE video_id = ?", (video_id,)
+        )
+
+
+def mark_comments_fetched(video_id: str):
+    """댓글 수집 시도 완료 표시 (재실행 시 중복 수집 방지)."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE videos SET comments_fetched = 1 WHERE video_id = ?", (video_id,)
+        )
 
 
 def get_video_ids_for_channel(channel_id: str, limit: int) -> list[str]:

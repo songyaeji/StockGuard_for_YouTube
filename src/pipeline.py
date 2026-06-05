@@ -9,8 +9,8 @@ import time
 
 from config.settings import (
     SEARCH_QUERIES,
-    COMMENT_TARGET_VIDEOS,
     REQUEST_DELAY_SECONDS,
+    YOUTUBE_API_KEYS,
 )
 from src.db import (
     init_db,
@@ -21,6 +21,8 @@ from src.db import (
     insert_channel,
     insert_video,
     insert_comment,
+    mark_comments_disabled,
+    mark_comments_fetched,
     get_channel_ids,
     get_video_ids_for_channel,
     get_conn,
@@ -48,12 +50,31 @@ def _print_summary():
 def _quota_exit():
     """쿼터 초과 안내 후 종료."""
     print("\n" + "!" * 50)
-    print("YouTube API 일일 쿼터 초과")
+    print("YouTube API 일일 쿼터 초과 (모든 키 소진)")
     print("수집된 데이터는 모두 저장되었습니다.")
     _print_summary()
     print("내일 오후 4시(KST) 쿼터 리셋 후 재실행하면 이어서 수집됩니다.")
     print("!" * 50)
     sys.exit(0)
+
+
+class KeyRotator:
+    """쿼터 초과 시 다음 API 키로 교체. 전 키 소진 시 종료."""
+
+    def __init__(self):
+        self.keys = YOUTUBE_API_KEYS or [None]
+        self.idx = 0
+        self.youtube = build_youtube_client(self.keys[0])
+        print(f"  → API 키 {len(self.keys)}개 로드됨 (키 1 사용 중)")
+
+    def rotate(self) -> bool:
+        """다음 키로 교체. 성공 시 True, 더 없으면 False."""
+        self.idx += 1
+        if self.idx >= len(self.keys):
+            return False
+        self.youtube = build_youtube_client(self.keys[self.idx])
+        print(f"\n  !! 쿼터 초과 → API 키 {self.idx + 1}로 교체")
+        return True
 
 
 def run():
@@ -127,33 +148,44 @@ def run():
 
         time.sleep(REQUEST_DELAY_SECONDS)
 
-    # ── STEP 4: 채널당 상위 영상 → 댓글 수집 ────────────────
+    # ── STEP 4: 전체 영상 → 댓글 수집 (video 단위 skip) ─────
     print("\n[3단계] 영상별 댓글 수집")
 
     with get_conn() as conn:
-        done_channels = {r["channel_id"] for r in conn.execute(
-            "SELECT DISTINCT channel_id FROM comments"
-        ).fetchall()}
+        pending_videos = conn.execute("""
+            SELECT v.video_id, v.channel_id
+            FROM videos v
+            WHERE v.comments_disabled = 0
+              AND v.comments_fetched = 0
+            ORDER BY v.channel_id
+        """).fetchall()
 
-    comment_targets = [cid for cid in channel_ids if cid not in done_channels]
-    print(f"총 {len(channel_ids)}개 채널 중 {len(comment_targets)}개 미수집")
+    pending_videos = [(r["video_id"], r["channel_id"]) for r in pending_videos]
+    print(f"미수집 영상 {len(pending_videos):,}개")
 
-    for idx, channel_id in enumerate(comment_targets, 1):
-        video_ids = get_video_ids_for_channel(channel_id, COMMENT_TARGET_VIDEOS)
-        if not video_ids:
-            continue
+    rotator = KeyRotator()
 
-        print(f"  [{idx}/{len(comment_targets)}] {channel_id} → {len(video_ids)}개 영상")
-        try:
-            for video_id in video_ids:
-                comments = fetch_comments_for_video(youtube, video_id, channel_id)
+    for idx, (video_id, channel_id) in enumerate(pending_videos, 1):
+        print(f"  [{idx:,}/{len(pending_videos):,}] {video_id}", end=" ", flush=True)
+        # 쿼터 초과 시 다음 키로 교체 후 같은 영상 재시도
+        while True:
+            try:
+                comments, disabled = fetch_comments_for_video(
+                    rotator.youtube, video_id, channel_id
+                )
                 for c in comments:
                     insert_comment(c)
-                print(f"    {video_id} → 댓글 {len(comments)}개")
+                if disabled:
+                    mark_comments_disabled(video_id)
+                else:
+                    mark_comments_fetched(video_id)
+                print(f"→ 댓글 {len(comments)}개{' [disabled]' if disabled else ''}")
                 time.sleep(REQUEST_DELAY_SECONDS)
+                break
 
-        except QuotaExceeded:
-            _quota_exit()
+            except QuotaExceeded:
+                if not rotator.rotate():
+                    _quota_exit()
 
     print("\n" + "=" * 50)
     print("수집 완료!")
