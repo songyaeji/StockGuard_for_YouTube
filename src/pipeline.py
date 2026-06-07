@@ -6,6 +6,7 @@
 """
 import sys
 import time
+from datetime import datetime, timezone, timedelta
 
 from config.settings import (
     SEARCH_QUERIES,
@@ -47,13 +48,32 @@ def _print_summary():
     print(f"\n  채널 {channels:,}개 | 영상 {videos:,}개 | 댓글 {comments:,}개 저장됨")
 
 
+def _quota_reset_eta() -> str:
+    """다음 YouTube 쿼터 리셋까지 남은 시간 문자열 반환. 리셋 = 자정 PT(KST 오후 4시 PDT / 5시 PST)."""
+    KST = timezone(timedelta(hours=9))
+    PT  = timezone(timedelta(hours=-7))  # PDT 기준(서머타임); PST는 -8
+    now_pt = datetime.now(PT)
+    reset_pt = now_pt.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    delta = reset_pt - now_pt
+    total_seconds = int(delta.total_seconds())
+    hours, rem = divmod(total_seconds, 3600)
+    minutes = rem // 60
+    reset_kst = reset_pt.astimezone(KST)
+    reset_str = reset_kst.strftime("%m/%d %H:%M KST")
+    if hours >= 24:
+        days = hours // 24
+        h    = hours % 24
+        return f"약 {days}d {h}h 후 ({reset_str})"
+    return f"약 {hours}h {minutes:02d}m 후 ({reset_str})"
+
+
 def _quota_exit():
     """쿼터 초과 안내 후 종료."""
     print("\n" + "!" * 50)
     print("YouTube API 일일 쿼터 초과 (모든 키 소진)")
     print("수집된 데이터는 모두 저장되었습니다.")
     _print_summary()
-    print("내일 오후 4시(KST) 쿼터 리셋 후 재실행하면 이어서 수집됩니다.")
+    print(f"쿼터 리셋 {_quota_reset_eta()} — 재실행하면 이어서 수집됩니다.")
     print("!" * 50)
     sys.exit(0)
 
