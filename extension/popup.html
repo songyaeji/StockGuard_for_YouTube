@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: "Noto Sans KR", sans-serif; width: 320px; margin: 0; padding: 14px; font-size: 13px; }
+    h1 { font-size: 15px; margin: 0 0 10px; }
+    .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    ul { margin: 6px 0; padding-left: 0; list-style: none; max-height: 180px; overflow-y: auto; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid #eee; }
+    li button { border: none; background: #eee; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+    .empty { color: #888; }
+    .note { color: #777; font-size: 11px; margin-top: 10px; line-height: 1.5; }
+    .note a { color: #2962ff; }
+  </style>
+</head>
+<body>
+  <h1>StockGuard for YouTube</h1>
+  <div class="row">
+    <span>탐지 활성화</span>
+    <input type="checkbox" id="enabled">
+  </div>
+  <div><b>허용한 채널</b></div>
+  <ul id="whitelist"><li class="empty">없음</li></ul>
+  <div class="note">
+    차단·경고는 데이터 분석 기반 <b>의심 정보</b>이며 법적 판단이 아님.
+    피해 신고: <a href="https://fine.fss.or.kr" target="_blank">금감원 불법금융신고센터</a>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

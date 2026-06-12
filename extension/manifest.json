@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "StockGuard for YouTube",
+  "version": "0.1.0",
+  "description": "불법 주식 리딩방 의심 유튜브 채널 탐지·경고·차단. 모델 점수는 법적 판단이 아니며 최종 판단은 금융당국 몫.",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["model_data.js", "model.js", "reg.js", "content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "StockGuard for YouTube"
+  }
+}
