@@ -3,6 +3,7 @@
 
 # Claude Code internal files
 .claude/
+CLAUDE.original.md
 
 # Data files (too large for git)
 data/
