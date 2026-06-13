@@ -24,8 +24,10 @@ function sgRegHits(text) {
     .map(([name]) => name);
 }
 
-function sgIsEconChannel(text) {
+// hits = sgRegHits(text) 미리 계산해 넘기면 재평가 생략(content.js에서 1회만 호출).
+function sgIsEconChannel(text, hits) {
   if (!text) return false;
+  if (SG_GATE.some((w) => text.includes(w))) return true;
   // 규제어가 직접 잡히면 그 자체가 금융 문맥 → 게이트 통과
-  return SG_GATE.some((w) => text.includes(w)) || sgRegHits(text).length > 0;
+  return (hits || sgRegHits(text)).length > 0;
 }

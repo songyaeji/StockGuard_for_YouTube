@@ -82,10 +82,19 @@ print(f'lite RF (13 feat)  AUC={roc_auc_score(y_te, score_te):.3f}  '
 prec, rec, thr = precision_recall_curve(y_te, score_te)
 ops = {}
 for name, pt in [('block', 0.9), ('warn', 0.7)]:
-    # prec[i]는 thr[i]에 대응(sklearn 문서) — thr[i-1]을 쓰면 목표 precision에 못 미침
-    i = min(int(np.argmax(prec >= pt)), len(thr) - 1)
+    # prec[i]는 thr[i]에 대응(sklearn 문서). 마지막 점(prec=1,rec=0)은 thr 없음 → prec를 thr 길이로 자름
+    pr = prec[:len(thr)]
+    reach = pr >= pt
+    if reach.any():
+        # 목표 precision 달성 점들 중 recall 최대(= threshold 최소) 선택. 노이즈성 첫 교차 회피
+        cand = np.flatnonzero(reach)
+        i = int(cand[np.argmax(rec[cand])])
+    else:
+        # 목표 precision 도달 불가 → 달성 가능한 최대 precision 점으로 폴백(전량 차단 사고 방지)
+        i = int(np.argmax(pr))
+        print(f'  ⚠ precision {pt} 도달불가 — 최대 precision {pr[i]:.3f}로 폴백')
     ops[name] = float(thr[i])
-    print(f'precision ≥ {pt}: threshold={ops[name]:.3f}  recall={rec[i]:.3f}')
+    print(f'precision ≥ {pt}: threshold={ops[name]:.3f}  recall={rec[i]:.3f}  precision={pr[i]:.3f}')
 
 imp = pd.Series(rf.feature_importances_, index=FEATS).sort_values(ascending=False)
 print('\nfeature importance:')

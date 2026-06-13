@@ -15,5 +15,5 @@ function sgScore(featObj) {
     }
     sum += tr.v[n];
   }
-  return sum / M.n_trees;
+  return sum / (M.n_trees || 1);   // 0-가드(빈 forest면 NaN 대신 0 → fail-safe pass)
 }

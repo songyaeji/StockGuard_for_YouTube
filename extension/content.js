@@ -1,6 +1,6 @@
 // StockGuard content script
 // 흐름: 채널 식별 → 채널/영상탭 HTML fetch → feature 파싱 → Stage 0 게이트 →
-//       규제어 + 모델 점수 → 차단/경고/통과 (modeling.ipynb 7장 3층 규칙)
+//       규제어 + 모델 점수 → 차단/경고/통과 (modeling.ipynb 6장 3층 규칙)
 // 차단 = 규제어 hit AND 점수 ≥ thresholds.block (모델 단독 차단 금지 — H1 기각 근거)
 // 경고 = 점수 ≥ thresholds.warn
 
@@ -10,6 +10,12 @@
   const cache = new Map();          // channelKey → 판정 결과 (탭 세션 동안 유지)
   const sessionAllow = new Set();   // '그래도 보기' 누른 채널
   let currentBanner = null;
+
+  // 캐시 무한증가 방지(긴 세션 메모리 누수) — 가장 오래된 항목부터 제거, 상한 200
+  function cacheSet(k, v) {
+    if (cache.size >= 200) cache.delete(cache.keys().next().value);
+    cache.set(k, v);
+  }
 
   // ---------- 파싱 유틸 ----------
 
@@ -72,7 +78,8 @@
       titles.push(jsonUnescape(m[1]));
       if (titles.length >= 60) break;
     }
-    return { medView: median(views.slice(0, 40)), titlesText: titles.join(' ') };
+    // 학습 med_view = 채널 전체 영상 중앙값. 페이지는 최신분만 보이므로 파싱된 전체로 근사(슬라이스 제거).
+    return { medView: median(views), titlesText: titles.join(' ') };
   }
 
   // ---------- 채널 식별 ----------
@@ -95,19 +102,30 @@
     if (cache.has(chPath)) return cache.get(chPath);
 
     const base = 'https://www.youtube.com' + chPath;
-    const [chHtml, vidHtml] = await Promise.all([
-      fetch(base, { credentials: 'same-origin' }).then((r) => r.text()),
-      fetch(base + '/videos', { credentials: 'same-origin' }).then((r) => r.text()).catch(() => ''),
-    ]);
+    // credentials:'omit' — 공개 채널 HTML은 로그인 불필요. 쿠키 동봉 시 본인계정 비공개요청·rate플래그 위험.
+    // 동의/로그인 벽으로 리다이렉트되면 채널 경로가 아니므로 ''로 처리 → 빈 프로필 오탐 방지.
+    const get = (url) => fetch(url, { credentials: 'omit', redirect: 'follow' })
+      .then((r) => (r.ok && /\/(channel|@|c|user)/.test(new URL(r.url).pathname) ? r.text() : ''))
+      .catch(() => '');
+    const [chHtml, vidHtml] = await Promise.all([get(base), get(base + '/videos')]);
 
     const ch = parseChannelHtml(chHtml);
     const vids = parseVideosHtml(vidHtml);
+
+    // 메타를 못 읽음(로그인·동의 벽·네트워크) → 빈 프로필로 점수내면 오탐 → 판단 보류
+    if (!ch.title && !ch.description && ch.subs === null) {
+      const out = { tier: 'pass', reason: '메타 읽기 실패(판단 보류)' };
+      cacheSet(chPath, out);
+      return out;
+    }
+
     const fullText = ch.title + ' ' + ch.description + ' ' + vids.titlesText;
+    const hits = sgRegHits(fullText);   // 게이트·판정 양쪽서 쓰므로 1회만 평가
 
     // Stage 0: 주식·경제 채널 아니면 판단하지 않음(분포 밖 → 오탐 방지)
-    if (!sgIsEconChannel(fullText)) {
+    if (!sgIsEconChannel(fullText, hits)) {
       const out = { tier: 'pass', reason: '비경제 채널(게이트 통과)' };
-      cache.set(chPath, out);
+      cacheSet(chPath, out);
       return out;
     }
 
@@ -119,7 +137,7 @@
       log_view_count: log1p(ch.totalViews),
       channel_age_days: ageDays,
       is_new_channel: ageDays === null ? null : (ageDays < 365 ? 1 : 0),
-      is_kr: ch.country === null ? null : (/대한민국|South Korea|^KR$/.test(ch.country) ? 1 : 0),
+      is_kr: /대한민국|South Korea|^KR$/.test(ch.country || '') ? 1 : 0,   // 학습은 결측→0 (median 대치 아님)
       has_url_desc: /https?:\/\/|www\./i.test(desc) ? 1 : 0,
       has_kakao_desc: /open\.kakao\.com|pf\.kakao\.com|kko\.to|kakao\.com\//i.test(desc) ? 1 : 0,
       has_phone_desc: /01[016789][-.\s]?\d{3,4}[-.\s]?\d{4}/.test(desc) ? 1 : 0,
@@ -129,7 +147,6 @@
       log_med_view: log1p(vids.medView),
     };
 
-    const hits = sgRegHits(fullText);
     const score = sgScore(feats);
     const T = STOCKGUARD_MODEL.thresholds;
 
@@ -138,7 +155,7 @@
     else if (score >= T.warn) tier = 'warn';
 
     const out = { tier, score, hits, title: ch.title };
-    cache.set(chPath, out);
+    cacheSet(chPath, out);
     return out;
   }
 
@@ -149,6 +166,12 @@
     document.documentElement.classList.remove('sg-blocked');
   }
 
+  // HTML 이스케이프 — 채널 제목은 채널 주인이 임의 설정 → innerHTML 직접 삽입 시 XSS
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
   function renderResult(chPath, res) {
     removeBanner();
     if (res.tier === 'pass') return;
@@ -157,14 +180,14 @@
     el.className = 'sg-banner ' + (res.tier === 'block' ? 'sg-block' : 'sg-warn');
 
     const reason = res.hits.length
-      ? `규제어 감지: ${res.hits.join(', ')} (금융위 금지광고·금감원 불법유형)`
+      ? `규제어 감지: ${esc(res.hits.join(', '))} (금융위 금지광고·금감원 불법유형)`
       : '행동·구조 패턴 의심 점수';
     const scoreTxt = `의심 점수 ${res.score.toFixed(2)}`;
 
     el.innerHTML = `
       <div class="sg-head">${res.tier === 'block' ? '🚫 리딩방 의심 채널 차단' : '⚠️ 리딩방 의심 채널 경고'}</div>
       <div class="sg-body">
-        <b>${res.title || chPath}</b> — ${reason} · ${scoreTxt}<br>
+        <b>${esc(res.title || chPath)}</b> — ${reason} · ${scoreTxt}<br>
         이 표시는 데이터 분석 기반 <b>의심 정보</b>이며 법적 판단이 아닙니다.
         피해가 의심되면 <a href="https://fine.fss.or.kr" target="_blank" rel="noopener">금감원 불법금융신고센터</a>로 신고하세요.
       </div>
@@ -197,7 +220,7 @@
 
   async function run() {
     const chPath = channelPathFromUrl() || (location.pathname === '/watch' ? channelPathFromWatch() : null);
-    const key = location.href + '|' + (chPath || '');
+    const key = chPath || location.href;   // 같은 채널 내 영상/탭 이동은 재평가 안 함(?si= 등 쿼리변화 무시)
     if (key === lastKey) return;
     lastKey = key;
 
@@ -219,6 +242,7 @@
   }
 
   document.addEventListener('yt-navigate-finish', () => setTimeout(run, 400));
-  setInterval(run, 2000);   // SPA 내비게이션 이벤트 누락 대비
+  // SPA 내비 이벤트 누락 대비 — 보이는 탭에서만(백그라운드 타이머 낭비 차단)
+  setInterval(() => { if (document.visibilityState === 'visible') run(); }, 2000);
   run();
 })();
