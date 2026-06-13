@@ -28,7 +28,18 @@ youtube_channels.db → data/processed/*.csv → 경량 모델·운영점 → mo
 | `extension/` | 크롬 익스텐션(MV3). 설계·구현은 [`extension/README.md`](extension/README.md) |
 | `data/` | 원본 DB·가공 CSV (git 제외) |
 
-## 실행
+## 익스텐션만 써보기
+
+수집·분석 없이 익스텐션만 설치하려면:
+
+1. 이 저장소를 받는다 — `git clone https://github.com/songyaeji/StockGuard_for_YouTube.git` (또는 GitHub에서 ZIP 다운로드 후 압축 해제)
+2. `chrome://extensions` → 우상단 **개발자 모드** 켜기
+3. **압축해제된 확장 프로그램을 로드** → 받은 폴더의 `extension/` 선택
+4. youtube.com 채널/영상 페이지에서 동작
+
+> 모델·데이터 없이 바로 동작한다(모델은 `extension/model_data.js`에 내장). 코드를 고치면 확장 카드의 새로고침 버튼만 누르면 반영.
+
+## 전체 파이프라인 실행
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
