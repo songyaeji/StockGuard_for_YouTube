@@ -11,7 +11,7 @@
 
 ## 데이터 (절대 규칙)
 - **원본 `data/youtube_channels.db` 보존.** 가공결과 = `data/processed/` 별도파일만. 원본 수정/삭제 금지.
-- 파생 라벨 `is_shorts`(0/1, `label_shorts.py`가 `/shorts/` redirect로 판별)는 원본 복사본 `data/processed/youtube_channels_labeled.db` videos에 기록. 원본 미수정.
+- 파생 라벨 `is_shorts`(0/1, `label_shorts.py`가 `/shorts/` redirect로 판별)는 수집 시점에 `youtube_channels.db` videos 테이블에 컬럼으로 이미 기록됨. 노트북은 원본 db를 그대로 읽어 `is_shorts` 사용(별도 labeled 복사본 없음). 원본 구조·행은 보존(읽기 전용 사용).
 - `data/` = gitignore. 커밋 금지.
 - 규모: 채널 2,508 / 영상 34,162 / 댓글 423,522. 무결성 검증 완료(중복·orphan·NULL 0).
 - 가공산출: `data/processed/{channels_clean, videos_clean, comments_clean, channel_features}.csv`
@@ -24,7 +24,7 @@
 
 ## 분석 방법론 (확정 원칙 — 위반 금지)
 - **라벨 leakage 금지**: `query_group`, `search_query` = 수집키워드 = 약한 라벨 prior. **분류기 입력 feature 쓰면 순환(leakage)**. 학습 X 제외, 평가·prior만.
-- **anomaly = 타깃 신호**: 리딩방 탐지 목표 → 이상치 삭제 X, 플래그(Retention). 정상분포 가정 극단치 제거 = 타깃 삭제.
+- **타깃 신호 = contextual outlier (anomaly 아님)**: 강의 정의 — outlier = 분포(global)/맥락(contextual)에서 튀지만 가능한 값, anomaly = outlier 아닌 비정상값(물리불가·무관표본). 리딩방 후보(구독↔조회 규칙선 이탈) = **contextual outlier** → 삭제 X, 플래그(Retention, 4-2). 정상분포 가정 극단치 제거 = 타깃 삭제 금지. anomaly(유령·비주식·like_rate>1)만 강의대로 Deletion/Imputation(4-3).
 - **regex ≠ ML**: 금융위 규제키워드 = 라벨 근거지 feature 아님. feature=label이면 regex 재학습. 규제어 = 임베딩(의미), URL/연락처 = 형식정규식.
 - **나이보정**: raw view/like/comment = `video_age_days = collected_at − published_at` 정규화(파생 시간 attribute).
 - **선택편향 명시**: 모집단 = "30개 주식키워드 검색 채널", 경제유튜브 전체 아님. 결론에 일반화 한계 caveat.

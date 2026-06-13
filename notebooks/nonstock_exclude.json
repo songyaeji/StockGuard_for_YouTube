@@ -1,0 +1,221 @@
+{
+  "description": "수동 검증으로 비주식 판정해 4-3 Anomaly Deletion으로 제외한 채널. 원본 DB 2,508개 중 금융어휘 0회 후보 187개 전수 열람 + 비주식 주제어 보조 스캔으로 선정. 주식 콘텐츠가 하나라도 확인되면 보존(보수적). 카카오톡/LINE 유도 봇은 리딩방 후보(타깃)라 미포함.",
+  "count": 43,
+  "channels": [
+    {
+      "channel_id": "UCH85e61Xz0RUlFmOcMhsxvg",
+      "name": "국풍2000 국어로 & AI리딩플러스 (국어학원)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCqNYNXT5m18-tx3xUBkbe1w",
+      "name": "글눈-리딩훈련소 (속독·문해력)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCoCSHY3n2QDX_MUkDxrfCtw",
+      "name": "글눈 (속독)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCr4MC7WKArV5XM9sgMs5CAQ",
+      "name": "빅데이터TV (속독법)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCsMi0csPHPQW1tynn_zSjtQ",
+      "name": "리딩오션 (독서교육)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCokTrkrZyALrJISgiiu5B0A",
+      "name": "리딩오션강남직영점 (독서교육)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCOkFPBQbVbF1ttXwwVzU6vQ",
+      "name": "월산리딩톡영어학원 (영어학원)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCTEtT13WaOXIrLNDcRAKFjw",
+      "name": "마커스랑원서읽기 (영어 원서)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UC5al__PZhWPULA1qdUAdkZQ",
+      "name": "리딩에듀 북트레일러연구소 (독서교육)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UCbn12fd1UbRb4itpgn8btnA",
+      "name": "추억의 오마이리딩 닷컴 (영어독해 강의)",
+      "category": "'리딩(reading)' 동음이의어: 독서·속독·언어 교육"
+    },
+    {
+      "channel_id": "UC32IOisFxLTONS6edpJWWkA",
+      "name": "타로 알려주는 남자",
+      "category": "'리딩' 동음이의어: 타로 리딩"
+    },
+    {
+      "channel_id": "UCUT6QLUNgJ764bHq54Eapeg",
+      "name": "타로마스터 해피마인드",
+      "category": "'리딩' 동음이의어: 타로 리딩"
+    },
+    {
+      "channel_id": "UCvD0GX34KF4OwXRzNZWL54A",
+      "name": "쭈네타로샵",
+      "category": "'리딩' 동음이의어: 타로 리딩"
+    },
+    {
+      "channel_id": "UCxKnfs4QBV__RjbnYV1HTCQ",
+      "name": "달온타로",
+      "category": "'리딩' 동음이의어: 타로 리딩"
+    },
+    {
+      "channel_id": "UCGp93uE1W_DKbWTMr67PGdA",
+      "name": "파워볼 마초 77",
+      "category": "'리딩' 동음이의어: 도박 베팅픽(파워볼·바카라·스포츠) — 주식 아님"
+    },
+    {
+      "channel_id": "UC7r0Rk9Wxrwlv3JqnOquW6Q",
+      "name": "파워볼갓혜원",
+      "category": "'리딩' 동음이의어: 도박 베팅픽(파워볼·바카라·스포츠) — 주식 아님"
+    },
+    {
+      "channel_id": "UCBhZR2hvP6DavEN9OvirgTQ",
+      "name": "파워볼 로켓라쿤",
+      "category": "'리딩' 동음이의어: 도박 베팅픽(파워볼·바카라·스포츠) — 주식 아님"
+    },
+    {
+      "channel_id": "UC9muN_9QnO_WXDHdnlb2h8Q",
+      "name": "바카라 이박사",
+      "category": "'리딩' 동음이의어: 도박 베팅픽(파워볼·바카라·스포츠) — 주식 아님"
+    },
+    {
+      "channel_id": "UCG3d5L5jrITuiYwkkQ08pNw",
+      "name": "스마트바카라",
+      "category": "'리딩' 동음이의어: 도박 베팅픽(파워볼·바카라·스포츠) — 주식 아님"
+    },
+    {
+      "channel_id": "UCWYyDE5QmhkcpiS86P3h9IQ",
+      "name": "스포츠애널리스트 고난 (스포츠 베팅 분석)",
+      "category": "'리딩' 동음이의어: 도박 베팅픽(파워볼·바카라·스포츠) — 주식 아님"
+    },
+    {
+      "channel_id": "UChkeCtktdPBgWHzUO6npzbg",
+      "name": "치어리딩TV",
+      "category": "'리딩' 동음이의어: 치어리딩"
+    },
+    {
+      "channel_id": "UCeW5KeyHC1F9BGZr2Mq70cw",
+      "name": "금연석-트래블애널리스트 (여행·골프)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UCTbjbjpKeCQsfwijOjC7TCw",
+      "name": "이상우애널리스트 작은배려 (맛집)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UC44dEu_c74xrgXzO5u5Ox5A",
+      "name": "League analyst 롤 애널리스트 (게임)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UCqfu282je1VmMZSOp3_a_lA",
+      "name": "TDWI (데이터 교육)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UC28v2fdIYNdEwwrNoG3kP_w",
+      "name": "Optelos (드론 데이터 SW)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UC8rqPN0uteSxNoCm_Nfy7Vw",
+      "name": "Laplace (이커머스 분석 SaaS)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UCRvudwkTe1FeqUoWrbIIAMQ",
+      "name": "PAP Product Analytics Playground (데이터 분석 커뮤니티)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UC1rNxByYgFxZCN6zpNYGWdA",
+      "name": "Attributer (마케팅 트래킹 SW)",
+      "category": "'애널리스트' 동음이의어: 비금융 분석가·분석 SW"
+    },
+    {
+      "channel_id": "UCNuQUuYvjSaKNru9KBZ4HPw",
+      "name": "기업회생연구소 법무법인 스탠다드 (법률)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCJq8suvyeU2xSJEAtfoDmFw",
+      "name": "더신사 법무법인 (법률)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCnIdBdmGzpmcAZEJtML2yUw",
+      "name": "법무법인 주인 (법률)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UC5MH3rXK9uL9dxgBlZdvOwA",
+      "name": "환불대행 (환불 대행 서비스)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UC0LGVD_EzaN-Do87WzVF2_w",
+      "name": "아이디해킹당함 (사기 피해복구 대행)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UClJcIEW026nDsStsHQh80jg",
+      "name": "보장 인사이트 랩 (보험)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCDLuHTLsJUoRreYMEyby8Nw",
+      "name": "보장은 최대로 보험료는 작게 (보험·토지)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCPlhLEhcgFOXkcR-BAq_XLg",
+      "name": "집상담소 위드tv (빌라 중개)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UC6inuEkuN_Xq2sjfO8MLXeQ",
+      "name": "이상우 부동산 애널리스트 (부동산)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UC_uMY983S-vSFso0Fd3eN3w",
+      "name": "부동산장터TV (상가·토지 매물)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCj-JS7C-gRUurFHv5Aq1OvQ",
+      "name": "Bionote HR (채용)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCFga1S51AvwWRm8mkkllSaw",
+      "name": "Nurse Life Delhi (간호 브이로그)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCKLD3f3Dx_--HZFCv4FXeuw",
+      "name": "네마리코믹스 (병맛더빙 코미디)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    },
+    {
+      "channel_id": "UCxri4ujNV5iiZ8nentzRPyA",
+      "name": "복덕방 커피 (일반 범죄·사기 스토리)",
+      "category": "검색어 오염: 주식 아닌 서비스·콘텐츠 채널"
+    }
+  ]
+}
