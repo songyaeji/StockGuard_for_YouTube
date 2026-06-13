@@ -1,6 +1,6 @@
 # StockGuard for YouTube — 크롬 익스텐션
 
-불법 주식 리딩방 의심 유튜브 채널을 탐지해 경고·차단하는 확장. `notebooks/modeling.ipynb` 7장 설계를 그대로 구현한 MVP.
+불법 주식 리딩방 의심 유튜브 채널을 탐지해 경고·차단하는 확장. `notebooks/modeling.ipynb` 분석 결과를 제품으로 옮긴 설계([`DESIGN.md`](DESIGN.md))를 그대로 구현한 MVP.
 
 ## 설치 (개발자 모드)
 1. Chrome → `chrome://extensions` → 우상단 **개발자 모드** 켜기
@@ -24,7 +24,7 @@
 | 통과 | 그 외 | 표시 없음 |
 
 - 모델 단독 차단 금지(H1 기각 결론) — 차단은 금융위 규제어라는 법적 근거 동반 시에만.
-- threshold는 경량 모델(아래)의 holdout precision-recall 운영점에서 산출: precision≥0.9 → 0.834(차단), precision≥0.7 → 0.658(경고). 노트북 full 모델의 0.71/0.64와 다른 이유 = feature 부분집합으로 재학습했기 때문.
+- threshold는 경량 모델(아래)의 테스트셋 precision-recall 운영점에서 산출: precision≥0.9 → 0.834(차단), precision≥0.7 → 0.658(경고). 노트북 full 모델의 0.92/0.77과 다른 이유 = feature 부분집합으로 재학습했기 때문.
 
 ## 경량 모델
 페이지에서 즉시 파싱 가능한 feature 13개만으로 재학습한 RandomForest(100 trees, depth 8).
@@ -34,7 +34,7 @@
 - 형식: 채널 설명의 URL/카톡/전화/텔레그램/밴드/이메일 플래그 (규제어는 feature 아님 — leakage 차단)
 - 기타: is_kr
 
-holdout AUC **0.767** (full 36개 feature 모델 0.81). 페이지에서 못 읽는 값(가입일·총조회 등)은 학습 중앙값으로 대치.
+테스트셋 AUC **0.767** (full 36개 feature 모델 0.80). 페이지에서 못 읽는 값(가입일·총조회 등)은 학습 중앙값으로 대치.
 
 재학습·내보내기:
 ```bash
