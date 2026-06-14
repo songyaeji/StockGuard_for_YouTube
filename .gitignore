@@ -24,3 +24,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# 로컬 전용 병합 노트북 (제보본 포함, github 미포함)
+notebooks/data-analysis.ipynb
+report/불법주식리딩방의심유튜브채널.csv
