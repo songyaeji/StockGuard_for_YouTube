@@ -1,19 +1,32 @@
 # StockGuard for YouTube
 
-불법 주식 리딩방 의심 유튜브 채널을 탐지·차단하는 크롬 익스텐션. 경희대 응용데이터분석 텀프로젝트.
+불법 주식 리딩방 의심 유튜브 채널을 데이터로 가려내는 분석 프로젝트. 경희대 응용데이터분석 텀프로젝트.
 
-규제 키워드만 보고 막는 게 아니라, 채널의 행동·구조 패턴(구독↔조회 비율, 채널 나이, 연락처 노출 등)으로 의심 채널을 가려낸다. 데이터 수집부터 EDA, 모델링, 익스텐션까지 한 흐름으로 묶었다.
+규제 키워드만 보고 막는 게 아니라, 채널의 행동·구조 패턴(구독↔조회 비율, 채널 나이, 연락처 노출 등)으로 의심 채널을 가려낸다. 데이터 수집부터 EDA, 가설검정·모델링까지 한 흐름으로 묶고, 최종 산출물로 **차단 리스트·의심 리스트** 두 CSV를 낸다.
 
 ## 전체 흐름
 
 ```
-YouTube API 수집        EDA · 전처리           가설검정 · 모델링         크롬 익스텐션
-crawl.py            preprocessing.ipynb    modeling.ipynb         extension/
-   │                       │                      │                    │
-youtube_channels.db → data/processed/*.csv → 경량 모델·운영점 → model_data.js 탑재
+YouTube API 수집        EDA · 전처리           가설검정 · 모델링            산출물
+crawl.py            preprocessing.ipynb    modeling.ipynb            data/processed/
+   │                       │                      │                       │
+youtube_channels.db → data/processed/*.csv → H1/H2/H3 + RF 점수 → 차단리스트.csv · 의심리스트.csv
 ```
 
-검색어 30개로 채널을 수집(주식 리딩방 타겟 + 정상 경제채널 + 교차)하고, 정제·EDA 후 H1/H2/H3 가설을 검정한다. 거기서 나온 경량 모델을 익스텐션에 넣어 실제 유튜브 페이지에서 채널을 평가한다.
+검색어 30개로 채널을 수집(주식 리딩방 타겟 + 정상 경제채널 + 교차)하고, 정제·EDA 후 H1/H2/H3 가설을 검정한다. 거기서 나온 RandomForest 의심 점수와 금융위·금감원 규제어를 결합해 두 리스트로 내보낸다.
+
+## 산출물 — 차단 리스트 / 의심 리스트
+
+`modeling.ipynb` 6장이 `data/processed/`에 두 CSV를 출력한다.
+
+| 리스트 | 조건 | 용도 |
+|---|---|---|
+| `차단리스트.csv` | 규제어 hit **그리고** 모델 점수 ≥ 차단 운영점(precision≥0.9) | "확실한 것만 막는다". 모델 점수 단독 차단 금지(H1 기각) — 규제어라는 법적 근거 동반 시에만 |
+| `의심리스트.csv` | 모델 점수 ≥ 의심 운영점(precision≥0.7) | 규제어 없어도 포함(회피형 후보). 차단이 아니라 수동 검토·신고 우선순위 큐 |
+
+각 행에 `channel_id·title·rf_score·규제어종수·규제어총매칭·매칭규제어·q_group`를 담아, 왜 의심하는지(어떤 규제어가 걸렸는지)를 같이 출력한다. 차단·의심은 분석 기반 **의심 정보**일 뿐 법적 판단이 아니며, 최종 판단·제재는 금융당국(금감원 [fine.fss.or.kr](https://fine.fss.or.kr)) 몫이다.
+
+> 금감원 '사이버불법금융행위제보' 제출용으로 수동 검증까지 거친 리스트는 `report/` 참고.
 
 ## 디렉토리
 
@@ -24,22 +37,11 @@ youtube_channels.db → data/processed/*.csv → 경량 모델·운영점 → mo
 | `config/settings.py` | 검색어 30개, API 키 목록, 수집 파라미터 |
 | `label_shorts.py` | 영상별 Shorts 여부 판별(`/shorts/` redirect) → 원본 DB `is_shorts` 컬럼 기록 |
 | `notebooks/preprocessing.ipynb` | 정제·무결성 검증·EDA·이상치 처리 |
-| `notebooks/modeling.ipynb` | H1 분류 / H2 PCA+군집 / H3 통계검정 |
-| `extension/` | 크롬 익스텐션(MV3). 설계·구현은 [`extension/README.md`](extension/README.md) |
+| `notebooks/modeling.ipynb` | H1 분류 / H2 PCA+군집 / H3 통계검정 → 차단·의심 리스트 출력 |
+| `report/` | 금감원 제보용 수동 검증 리스트 |
 | `data/` | 원본 DB·가공 CSV (git 제외) |
 
-## 익스텐션만 써보기
-
-수집·분석 없이 익스텐션만 설치하려면:
-
-1. 이 저장소를 받는다 — `git clone https://github.com/songyaeji/StockGuard_for_YouTube.git` (또는 GitHub에서 ZIP 다운로드 후 압축 해제)
-2. `chrome://extensions` → 우상단 **개발자 모드** 켜기
-3. **압축해제된 확장 프로그램을 로드** → 받은 폴더의 `extension/` 선택
-4. youtube.com 채널/영상 페이지에서 동작
-
-> 모델·데이터 없이 바로 동작한다(모델은 `extension/model_data.js`에 내장). 코드를 고치면 확장 카드의 새로고침 버튼만 누르면 반영.
-
-## 전체 파이프라인 실행
+## 실행
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
@@ -47,11 +49,11 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 # 1. 데이터 수집 (.env에 YOUTUBE_API_KEY 필요, 쿼터 초과 시 이어받기)
 .venv/bin/python crawl.py
 
-# 2. 노트북 (정제 → 모델링)
+# 2. 노트북 (정제 → 모델링 → 차단·의심 리스트 출력)
 .venv/bin/jupyter notebook notebooks/
-
-# 3. 익스텐션 — chrome://extensions → 개발자 모드 → extension/ 로드
 ```
+
+`modeling.ipynb`를 끝까지 실행하면 `data/processed/차단리스트.csv`·`의심리스트.csv`가 생성된다.
 
 ## 데이터 규모
 
@@ -66,4 +68,4 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 ## 고지
 
-차단·경고는 데이터 분석 기반 의심 정보일 뿐 법적 판단이 아니다. 최종 판단·제재는 금융당국(금감원 [fine.fss.or.kr](https://fine.fss.or.kr)) 몫.
+차단·의심 리스트는 데이터 분석 기반 의심 정보일 뿐 법적 판단이 아니다. 최종 판단·제재는 금융당국(금감원 [fine.fss.or.kr](https://fine.fss.or.kr)) 몫.
